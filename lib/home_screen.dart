@@ -346,7 +346,7 @@ Color priorityColor(Priority priority) {
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.edit),
-                                  color: Theme.of(context).primaryColor,
+                                  color: Colors.white,
                                   onPressed: () => showEditDialog(todo),
                                 ),
                                 IconButton(

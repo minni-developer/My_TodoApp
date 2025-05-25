@@ -29,7 +29,7 @@ class _TodoInputState extends State<TodoInput> {
             controller: _controller,
             decoration: const InputDecoration(
               labelText: 'Enter a new task',
-              prefixIcon: Icon(Icons.edit, color: Colors.deepPurple),
+              prefixIcon: Icon(Icons.edit, color: Colors.white),
             ),
             onSubmitted: (_) => _submitData(),
           ),
