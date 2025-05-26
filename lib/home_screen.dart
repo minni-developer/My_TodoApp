@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-    editController.dispose();
+
   }
 
 Color priorityColor(Priority priority) {
