@@ -28,6 +28,28 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? selectedDueDate;
   Priority selectedPriority = Priority.medium;
 
+  int _selectedIndex = 0;
+  Priority? selectedFilter; // null = show all
+
+  void _onFilterChanged(int index) {
+    setState(() {
+      _selectedIndex = index;
+      switch (index) {
+        case 1:
+          selectedFilter = Priority.high;
+          break;
+        case 2:
+          selectedFilter = Priority.medium;
+          break;
+        case 3:
+          selectedFilter = Priority.low;
+          break;
+        default:
+          selectedFilter = null;
+      }
+    });
+  }
+
   void addTodo() {
     final taskText = todoController.text.trim();
     if (taskText.isEmpty) return;
@@ -265,13 +287,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     return Center(child: Text("No tasks added yet!"));
                   }
 
-                  final todos = box.values.toList();
-                  todos.sort((a, b) => (a.dueDate ?? DateTime(2100)).compareTo(b.dueDate ?? DateTime(2100)));
+                  final allTodos = box.values.toList();
+                  final filteredTodos = selectedFilter == null
+                      ? allTodos
+                      : allTodos.where((todo) => todo.priority == selectedFilter).toList();
+
+                  filteredTodos.sort((a, b) => (a.dueDate ?? DateTime(2100)).compareTo(b.dueDate ?? DateTime(2100)));
 
                   return ListView.builder(
-                    itemCount: todos.length,
+                    itemCount: filteredTodos.length,
                     itemBuilder: (context, index) {
-                      final todo = todos[index];
+                      final todo = filteredTodos[index];
                       final dueDate = todo.dueDate;
                       final bool nearDue = dueDate != null && isDueSoon(dueDate);
                       final bool pastDue = dueDate != null && isPastDue(dueDate);
@@ -335,6 +361,20 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onFilterChanged,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+        backgroundColor: Theme.of(context).primaryColor,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'All'),
+          BottomNavigationBarItem(icon: Icon(Icons.priority_high), label: 'High'),
+          BottomNavigationBarItem(icon: Icon(Icons.trending_up), label: 'Medium'),
+          BottomNavigationBarItem(icon: Icon(Icons.low_priority), label: 'Low'),
+        ],
       ),
     );
   }
