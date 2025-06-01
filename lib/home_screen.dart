@@ -1,25 +1,10 @@
 // home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
-
-enum Priority { high, medium, low }
-
-class Todo {
-  final String id;
-  String title;
-  bool completed;
-  DateTime? dueDate;
-  Priority priority;
-
-  Todo({
-    required this.id,
-    required this.title,
-    this.completed = false,
-    this.dueDate,
-    this.priority = Priority.medium,
-  });
-}
+import '../models/todo.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -38,49 +23,44 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final uuid = const Uuid();
   final TextEditingController todoController = TextEditingController();
-  final List<Todo> todos = [];
+  final DateFormat dateFormatter = DateFormat.yMd();
 
   DateTime? selectedDueDate;
   Priority selectedPriority = Priority.medium;
-  final DateFormat dateFormatter = DateFormat.yMd();
 
   void addTodo() {
     final taskText = todoController.text.trim();
     if (taskText.isEmpty) return;
 
-    setState(() {
-      todos.add(Todo(
-        id: uuid.v4(),
-        title: taskText,
-        dueDate: selectedDueDate,
-        priority: selectedPriority,
-      ));
-      todoController.clear();
-      selectedDueDate = null;
-      selectedPriority = Priority.medium;
-    });
+    final todoBox = Hive.box<Todo>('todos');
+    final newTodo = Todo(
+      id: uuid.v4(),
+      title: taskText,
+      description: '',
+      dueDate: selectedDueDate,
+      priority: selectedPriority,
+    );
+    todoBox.add(newTodo);
+
+    todoController.clear();
+    selectedDueDate = null;
+    selectedPriority = Priority.medium;
   }
 
-  void removeTodo(String id) {
-    setState(() {
-      todos.removeWhere((todo) => todo.id == id);
-    });
+  void toggleCompletion(Todo todo) {
+    todo.isDone = !todo.isDone;
+    todo.save();
   }
 
-  void toggleCompletion(String id) {
-    setState(() {
-      final todo = todos.firstWhere((t) => t.id == id);
-      todo.completed = !todo.completed;
-    });
+  void editTodo(Todo todo, String title, DateTime? dueDate, Priority priority) {
+    todo.title = title;
+    todo.dueDate = dueDate;
+    todo.priority = priority;
+    todo.save();
   }
 
-  void editTodo(String id, String title, DateTime? dueDate, Priority priority) {
-    setState(() {
-      final todo = todos.firstWhere((t) => t.id == id);
-      todo.title = title;
-      todo.dueDate = dueDate;
-      todo.priority = priority;
-    });
+  void removeTodo(Todo todo) {
+    todo.delete();
   }
 
   Future<void> pickDueDate() async {
@@ -93,25 +73,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (picked != null) {
-      setState(() {
-        selectedDueDate = picked;
-      });
+      setState(() => selectedDueDate = picked);
     }
-  }
-
-  Widget buildPriorityDropdown(Priority current, void Function(Priority) onChanged) {
-    return DropdownButton<Priority>(
-      value: current,
-      items: Priority.values.map((Priority value) {
-        return DropdownMenuItem<Priority>(
-          value: value,
-          child: Text(value.name.toUpperCase()),
-        );
-      }).toList(),
-      onChanged: (Priority? newValue) {
-        if (newValue != null) onChanged(newValue);
-      },
-    );
   }
 
   Future<void> showEditDialog(Todo todo) async {
@@ -125,48 +88,49 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, setState) {
           return AlertDialog(
             title: const Text('Edit Task'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: editController,
-                    autofocus: true,
-                    decoration: const InputDecoration(hintText: 'Task Title'),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Text('Due Date: '),
-                      TextButton(
-                        onPressed: () async {
-                          DateTime today = DateTime.now();
-                          final DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: editDueDate ?? today,
-                            firstDate: today,
-                            lastDate: DateTime(today.year + 5),
-                          );
-                          if (picked != null) {
-                            setState(() => editDueDate = picked);
-                          }
-                        },
-                        child: Text(
-                          editDueDate == null
-                              ? 'Pick Date'
-                              : dateFormatter.format(editDueDate!),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Text('Priority: '),
-                      buildPriorityDropdown(editPriority, (val) => setState(() => editPriority = val)),
-                    ],
-                  ),
-                ],
-              ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: editController,
+                  decoration: const InputDecoration(hintText: 'Task Title'),
+                ),
+                Row(
+                  children: [
+                    const Text('Due Date: '),
+                    TextButton(
+                      onPressed: () async {
+                        DateTime today = DateTime.now();
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: editDueDate ?? today,
+                          firstDate: today,
+                          lastDate: DateTime(today.year + 5),
+                        );
+                        if (picked != null) setState(() => editDueDate = picked);
+                      },
+                      child: Text(editDueDate == null ? 'Pick Date' : dateFormatter.format(editDueDate!)),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Text('Priority: '),
+                    DropdownButton<Priority>(
+                      value: editPriority,
+                      items: Priority.values.map((Priority value) {
+                        return DropdownMenuItem<Priority>(
+                          value: value,
+                          child: Text(value.name.toUpperCase()),
+                        );
+                      }).toList(),
+                      onChanged: (Priority? newValue) {
+                        if (newValue != null) setState(() => editPriority = newValue);
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
             actions: [
               TextButton(
@@ -176,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (editController.text.trim().isNotEmpty) {
-                    editTodo(todo.id, editController.text.trim(), editDueDate, editPriority);
+                    editTodo(todo, editController.text.trim(), editDueDate, editPriority);
                     Navigator.of(context).pop();
                   }
                 },
@@ -187,20 +151,18 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-
   }
 
-Color priorityColor(Priority priority) {
-  switch (priority) {
-    case Priority.high:
-      return Colors.deepPurple.shade500; // Darker purple for high priority
-    case Priority.medium:
-      return Colors.deepPurple.shade300; // Medium purple
-    case Priority.low:
-      return Colors.deepPurple.shade100; // Light purple
+  Color priorityColor(Priority priority) {
+    switch (priority) {
+      case Priority.high:
+        return Colors.deepPurple.shade500;
+      case Priority.medium:
+        return Colors.deepPurple.shade300;
+      case Priority.low:
+        return Colors.deepPurple.shade100;
+    }
   }
-}
-
 
   bool isDueSoon(DateTime dueDate) => dueDate.difference(DateTime.now()).inDays <= 2 && dueDate.isAfter(DateTime.now());
   bool isPastDue(DateTime dueDate) => dueDate.isBefore(DateTime.now());
@@ -214,8 +176,6 @@ Color priorityColor(Priority priority) {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.isDarkMode;
-    todos.sort((a, b) => (a.dueDate ?? DateTime(2100)).compareTo(b.dueDate ?? DateTime(2100)));
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('DailyWins'),
@@ -282,84 +242,96 @@ Color priorityColor(Priority priority) {
                       : dateFormatter.format(selectedDueDate!)),
                 ),
                 const SizedBox(width: 20),
-                buildPriorityDropdown(selectedPriority, (val) => setState(() => selectedPriority = val)),
+                DropdownButton<Priority>(
+                  value: selectedPriority,
+                  items: Priority.values.map((Priority value) {
+                    return DropdownMenuItem<Priority>(
+                      value: value,
+                      child: Text(value.name.toUpperCase()),
+                    );
+                  }).toList(),
+                  onChanged: (Priority? newValue) {
+                    if (newValue != null) setState(() => selectedPriority = newValue);
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: todos.isEmpty
-                  ? Center(
-                      child: Text('No tasks added yet!',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white70
-                                : Colors.deepPurple.shade700,
+              child: ValueListenableBuilder(
+                valueListenable: Hive.box<Todo>('todos').listenable(),
+                builder: (context, Box<Todo> box, _) {
+                  if (box.values.isEmpty) {
+                    return Center(child: Text("No tasks added yet!"));
+                  }
+
+                  final todos = box.values.toList();
+                  todos.sort((a, b) => (a.dueDate ?? DateTime(2100)).compareTo(b.dueDate ?? DateTime(2100)));
+
+                  return ListView.builder(
+                    itemCount: todos.length,
+                    itemBuilder: (context, index) {
+                      final todo = todos[index];
+                      final dueDate = todo.dueDate;
+                      final bool nearDue = dueDate != null && isDueSoon(dueDate);
+                      final bool pastDue = dueDate != null && isPastDue(dueDate);
+
+                      return Card(
+                        color: priorityColor(todo.priority),
+                        shape: (pastDue || nearDue)
+                            ? RoundedRectangleBorder(
+                                side: BorderSide(
+                                  color: pastDue ? Colors.red : Colors.orange,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        child: ListTile(
+                          leading: Checkbox(
+                            value: todo.isDone,
+                            onChanged: (_) => toggleCompletion(todo),
+                            fillColor: WidgetStateProperty.all(Theme.of(context).primaryColor),
+                          ),
+                          title: Text(
+                            todo.title,
+                            style: TextStyle(
+                              decoration: todo.isDone ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          subtitle: dueDate != null
+                              ? Text(
+                                  'Due: ${dateFormatter.format(dueDate)}',
+                                  style: TextStyle(
+                                    color: pastDue
+                                        ? Colors.red.shade900
+                                        : nearDue
+                                            ? Colors.orange.shade800
+                                            : null,
+                                  ),
+                                )
+                              : null,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                color: Colors.white,
+                                onPressed: () => showEditDialog(todo),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                color: Colors.red.shade700,
+                                onPressed: () => removeTodo(todo),
+                              ),
+                            ],
                           ),
                         ),
-                    )
-                  : ListView.builder(
-                      itemCount: todos.length,
-                      itemBuilder: (context, index) {
-                        final todo = todos[index];
-                        final dueDate = todo.dueDate;
-                        final bool nearDue = dueDate != null && isDueSoon(dueDate);
-                        final bool pastDue = dueDate != null && isPastDue(dueDate);
-
-                        return Card(
-                          color: priorityColor(todo.priority),
-                          shape: (pastDue || nearDue)
-                              ? RoundedRectangleBorder(
-                                  side: BorderSide(
-                                    color: pastDue ? Colors.red : Colors.orange,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                )
-                              : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          child: ListTile(
-                            leading: Checkbox(
-                              value: todo.completed,
-                              onChanged: (_) => toggleCompletion(todo.id),
-                              fillColor: WidgetStateProperty.all(Theme.of(context).primaryColor),
-                            ),
-                            title: Text(
-                              todo.title,
-                              style: TextStyle(
-                                decoration: todo.completed ? TextDecoration.lineThrough : null,
-                              ),
-                            ),
-                            subtitle: dueDate != null
-                                ? Text(
-                                    'Due: ${dateFormatter.format(dueDate)}',
-                                    style: TextStyle(
-                                      color: pastDue
-                                          ? Colors.red.shade900
-                                          : nearDue
-                                              ? Colors.orange.shade800
-                                              : null,
-                                    ),
-                                  )
-                                : null,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  color: Colors.white,
-                                  onPressed: () => showEditDialog(todo),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  color: Colors.red.shade700,
-                                  onPressed: () => removeTodo(todo.id),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
