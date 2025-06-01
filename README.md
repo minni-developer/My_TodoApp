@@ -20,12 +20,17 @@ DailyWins is a beautifully designed Flutter application that helps you manage yo
 
 ```
 lib/
-├── main.dart                 # App entry point and theme setup
-├── home_screen.dart          # Main UI and logic
+├── main.dart                   # App entry point and theme + Hive initialization
+├── home_screen.dart            # UI logic and filtering, displays task list
 ├── models/
-│   └── todo.dart             # Todo model with Hive annotations
+│   └── todo.dart               # Hive data model class with fields like title, dueDate, priority
+│   └── todo.g.dart             # Generated Hive TypeAdapter (auto-created by build_runner)
 ├── screens/
-│   └── add_todo_screen.dart # (Optional UI for manual task addition)
+│   └── add_todo_screen.dart    # UI screen for adding a new task manually
+├── widgets/
+│   ├── add_todo.dart           # (Unused or duplicate – can be cleaned)
+│   ├── home_screen.dart        # (Duplicate reference – original is in lib/)
+│   └── todo_item.dart          # (Can be used to style individual todo list items, optional)
 ```
 
 ---
