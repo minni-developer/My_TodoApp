@@ -28,7 +28,7 @@ class TodoItem extends StatelessWidget {
         onChanged: (value) => onToggleDone(),
       ),
       trailing: IconButton(
-        icon: const Icon(Icons.delete, color: Colors.red),
+        icon: const Icon(Icons.delete, color: Colors.grey),
         onPressed: onDelete,
       ),
     );

@@ -72,7 +72,7 @@ Widget build(BuildContext context) {
         elevation: 4,
       ),
       iconTheme: const IconThemeData(color: Colors.deepPurple),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 2,
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -119,7 +119,7 @@ Widget build(BuildContext context) {
         elevation: 4,
       ),
       iconTheme: const IconThemeData(color: Colors.deepPurpleAccent),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 2,
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
