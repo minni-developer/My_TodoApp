@@ -28,9 +28,8 @@ lib/
 ├── screens/
 │   └── add_todo_screen.dart    # UI screen for adding a new task manually
 ├── widgets/
-│   ├── add_todo.dart           # (Unused or duplicate – can be cleaned)
-│   ├── home_screen.dart        # (Duplicate reference – original is in lib/)
 │   └── todo_item.dart          # (Can be used to style individual todo list items, optional)
+  
 ```
 
 ---
