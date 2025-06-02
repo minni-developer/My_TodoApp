@@ -347,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
-                                color: Colors.red.shade700,
+                                color: Colors.white,
                                 onPressed: () => removeTodo(todo),
                               ),
                             ],
